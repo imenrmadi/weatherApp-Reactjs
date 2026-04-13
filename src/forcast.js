@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Component } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
 import apiKeys from "./apiKeys";
 import ReactAnimatedWeather from "react-animated-weather";
@@ -41,6 +41,7 @@ function Forcast(props) {
 
   useEffect(() => {
     search("Delhi");
+// eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
