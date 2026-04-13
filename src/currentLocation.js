@@ -56,6 +56,7 @@ class Weather extends React.Component {
     sunrise: undefined,
     sunset: undefined,
     errorMsg: undefined,
+    error: undefined,
   };
 
   componentDidMount() {
@@ -67,7 +68,7 @@ class Weather extends React.Component {
         })
         .catch((err) => {
           //If user denied location service then standard location weather will le shown on basis of latitude & latitude.
-          this.getWeather(28.67, 77.22);
+          this.getWeather(48.8566, 2.3522); // Paris fallback
           alert(
             "You have disabled location service. Allow 'This APP' to access your location. Your current location will be used for calculating Real time weather."
           );
@@ -102,58 +103,96 @@ class Weather extends React.Component {
     });
   };
   getWeather = async (lat, lon) => {
-    const api_call = await fetch(
-      `${apiKeys.base}weather?lat=${lat}&lon=${lon}&units=metric&APPID=${apiKeys.key}`
-    );
-    const data = await api_call.json();
-    this.setState({
-      lat: lat,
-      lon: lon,
-      city: data.name,
-      temperatureC: Math.round(data.main.temp),
-      temperatureF: Math.round(data.main.temp * 1.8 + 32),
-      humidity: data.main.humidity,
-      main: data.weather[0].main,
-      country: data.sys.country,
-      // sunrise: this.getTimeFromUnixTimeStamp(data.sys.sunrise),
+    try {
+      const api_call = await fetch(
+        `${apiKeys.base}weather?lat=${lat}&lon=${lon}&units=metric&APPID=${apiKeys.key}`
+      );
 
-      // sunset: this.getTimeFromUnixTimeStamp(data.sys.sunset),
-    });
-    switch (this.state.main) {
-      case "Haze":
+      if (!api_call.ok) {
+        throw new Error(`API Error: ${api_call.status} ${api_call.statusText}`);
+      }
+
+      const data = await api_call.json();
+
+      // Check if the response contains the expected data structure
+      if (!data.main || !data.weather || !data.sys) {
+        throw new Error('Invalid API response structure');
+      }
+
+      this.setState({
+        lat: lat,
+        lon: lon,
+        city: data.name,
+        temperatureC: Math.round(data.main.temp),
+        temperatureF: Math.round(data.main.temp * 1.8 + 32),
+        humidity: data.main.humidity,
+        main: data.weather[0].main,
+        country: data.sys.country,
+        // sunrise: this.getTimeFromUnixTimeStamp(data.sys.sunrise),
+        // sunset: this.getTimeFromUnixTimeStamp(data.sys.sunset),
+      });
+
+      switch (this.state.main) {
+        case "Haze":
+          this.setState({ icon: "CLEAR_DAY" });
+          break;
+        case "Clouds":
+          this.setState({ icon: "CLOUDY" });
+          break;
+        case "Rain":
+          this.setState({ icon: "RAIN" });
+          break;
+        case "Snow":
+          this.setState({ icon: "SNOW" });
+          break;
+        case "Dust":
+          this.setState({ icon: "WIND" });
+          break;
+        case "Drizzle":
+          this.setState({ icon: "SLEET" });
+          break;
+        case "Fog":
+          this.setState({ icon: "FOG" });
+          break;
+        case "Smoke":
+          this.setState({ icon: "FOG" });
+          break;
+        case "Tornado":
+          this.setState({ icon: "WIND" });
+          break;
+        default:
         this.setState({ icon: "CLEAR_DAY" });
-        break;
-      case "Clouds":
-        this.setState({ icon: "CLOUDY" });
-        break;
-      case "Rain":
-        this.setState({ icon: "RAIN" });
-        break;
-      case "Snow":
-        this.setState({ icon: "SNOW" });
-        break;
-      case "Dust":
-        this.setState({ icon: "WIND" });
-        break;
-      case "Drizzle":
-        this.setState({ icon: "SLEET" });
-        break;
-      case "Fog":
-        this.setState({ icon: "FOG" });
-        break;
-      case "Smoke":
-        this.setState({ icon: "FOG" });
-        break;
-      case "Tornado":
-        this.setState({ icon: "WIND" });
-        break;
-      default:
-        this.setState({ icon: "CLEAR_DAY" });
+      }
+    } catch (error) {
+      console.error('Error fetching weather data:', error);
+      this.setState({
+        error: 'Unable to fetch weather data. Please check your API key and try again.',
+        temperatureC: null,
+        temperatureF: null,
+        humidity: null,
+        main: null,
+        country: null,
+        city: null
+      });
     }
   };
 
   render() {
-    if (this.state.temperatureC) {
+    if (this.state.error) {
+      return (
+        <React.Fragment>
+          <div style={{ color: "white", textAlign: "center", padding: "20px" }}>
+            <h3 style={{ fontSize: "22px", fontWeight: "600", marginBottom: "10px" }}>
+              Error
+            </h3>
+            <p style={{ fontSize: "16px" }}>{this.state.error}</p>
+            <p style={{ fontSize: "14px", marginTop: "10px", opacity: "0.8" }}>
+              Make sure you have a valid OpenWeatherMap API key in apiKeys.js
+            </p>
+          </div>
+        </React.Fragment>
+      );
+    } else if (this.state.temperatureC) {
       return (
         <React.Fragment>
           <div className="city">
@@ -194,7 +233,7 @@ class Weather extends React.Component {
     } else {
       return (
         <React.Fragment>
-          <img src={loader} style={{ width: "50%", WebkitUserDrag: "none" }} />
+          <img src={loader} alt="Loading indicator" style={{ width: "50%", WebkitUserDrag: "none" }} />
           <h3 style={{ color: "white", fontSize: "22px", fontWeight: "600" }}>
             Detecting your location
           </h3>
