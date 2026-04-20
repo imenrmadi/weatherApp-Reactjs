@@ -1,0 +1,11 @@
+app: weatherapp
+spec:
+  selector:
+    app: weatherapp
+  type: 192.168.1.27       # ← Options : ClusterIP | NodePort | LoadBalancer
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80          # ← Port exposé par le service
+      targetPort: 80  # ← Doit correspondre au containerPort du deployment
+ 
