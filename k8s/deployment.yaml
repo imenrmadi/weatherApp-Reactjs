@@ -22,19 +22,13 @@ spec:
     spec:
       containers:
         - name: weatherapp
-          image: imen8/weatherapp:latest  # ← Remplacer par ton image
+          image: imen8/weatherapp:latest
           imagePullPolicy: Always
           ports:
-            - containerPort: 80  # ← Adapter selon ton port applicatif
+            - containerPort: 80
           env:
             - name: NODE_ENV
               value: "production"
-            # Ajouter ici tes variables d'environnement
-            # - name: API_KEY
-            #   valueFrom:
-            #     secretKeyRef:
-            #       name: weatherapp-secret
-            #       key: api-key
           resources:
             requests:
               memory: "128Mi"
@@ -44,15 +38,13 @@ spec:
               cpu: "500m"
           livenessProbe:
             httpGet:
-              path: /health
+              path: /        # ← corrigé
               port: 80
             initialDelaySeconds: 15
             periodSeconds: 20
           readinessProbe:
             httpGet:
-              path: /health
+              path: /        # ← corrigé
               port: 80
             initialDelaySeconds: 5
             periodSeconds: 10
-      # imagePullSecrets:
-      #   - name: registry-secret  # ← Décommenter si registry privé
