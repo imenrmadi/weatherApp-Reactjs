@@ -1,0 +1,92 @@
+pipeline {
+    agent any
+
+    environment {
+        SCANNER_HOME = tool 'sonar-scanner'
+        DOCKER_HUB  = 'imen8'
+        IMAGE_NAME  = 'weatherapp'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                git branch: 'master',
+                credentialsId: '525997b1-3b76-410c-bf52-e2a09e81aadf',
+                url: 'https://github.com/imenrmadi/weatherApp-Reactjs.git/'
+            }
+        }
+        stage('OWASP Scan') {
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
+                    withCredentials([string(credentialsId: 'nvd-api-key', variable: 'NVD_KEY')]) {
+                        dependencyCheck additionalArguments: '''
+                            --scan ./package.json
+                            --format HTML --format XML
+                            --nvdApiKey=${NVD_KEY}
+                            --data /var/lib/jenkins/dependency-check-data
+                            --noupdate
+                        ''', odcInstallation: 'DP'  // ← dossier de cache persistant
+                    }
+                }
+                dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+            }
+        }
+        stage('Sonarqube') {
+            steps {
+                withSonarQubeEnv('sonar-server') {
+                    sh '''
+                    $SCANNER_HOME/bin/sonar-scanner \
+                    -Dsonar.projectName=weatherapp \
+                    -Dsonar.projectKey=weatherapp \
+                    -Dsonar.sources=src \
+                    -Dsonar.exclusions=node_modules/**,build/**
+                    '''
+                }
+            }
+        }
+        stage('Quality Gate') {
+            steps {
+                timeout(time: 15, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+
+         stage('Build Docker Image') {
+            steps {
+                sh '''
+                docker build -t ${DOCKER_HUB}/${IMAGE_NAME}:${BUILD_NUMBER} -f docker/Dockerfile .
+                '''
+            }
+        }
+        stage('Push Image') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub-cred',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+                    sh '''
+                    echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
+                    docker push ${DOCKER_HUB}/${IMAGE_NAME}:${BUILD_NUMBER}
+                    docker tag ${DOCKER_HUB}/${IMAGE_NAME}:${BUILD_NUMBER} ${DOCKER_HUB}/${IMAGE_NAME}:latest
+                    docker push ${DOCKER_HUB}/${IMAGE_NAME}:latest
+                    '''
+                }
+            }
+        }
+        stage('Deploy to Kubernetes') {
+            steps {
+                withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
+                    sh '''
+                    export KUBECONFIG=$KUBECONFIG
+                    kubectl apply --validate=false -f k8s/deployment.yaml
+                    kubectl apply --validate=false -f k8s/service.yaml
+                    kubectl rollout status deployment/weatherapp
+                    '''
+                }
+            }
+        }
+    }
+    
+}
