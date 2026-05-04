@@ -8,10 +8,10 @@ metadata:
 spec:
   selector:
     app: weatherapp
-  type: NodePort        # ← pour accéder depuis l'extérieur via IP du master
+  type: NodePort
   ports:
     - name: http
       protocol: TCP
       port: 80
       targetPort: 80
-      nodePort: 30080   # ← port d'accès externe (entre 30000-32767)
+      nodePort: 30080
