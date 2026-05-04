@@ -1,50 +1,70 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: weatherapp
-  namespace: default
-  labels:
-    app: weatherapp
+  name: weatherapp
+  namespace: default
+  labels:
+    app: weatherapp
 spec:
-  replicas: 2
-  selector:
-    matchLabels:
-      app: weatherapp
-  strategy:
-    type: RollingUpdate
-    rollingUpdate:
-      maxSurge: 1
-      maxUnavailable: 0
-  template:
-    metadata:
-      labels:
-        app: weatherapp
-    spec:
-      containers:
-        - name: weatherapp
-          image: imen8/weatherapp:latest
-          imagePullPolicy: Always
-          ports:
-            - containerPort: 80
-          env:
-            - name: NODE_ENV
-              value: "production"
-          resources:
-            requests:
-              memory: "128Mi"
-              cpu: "100m"
-            limits:
-              memory: "256Mi"
-              cpu: "500m"
-          livenessProbe:
-            httpGet:
-              path: /        # ← corrigé
-              port: 80
-            initialDelaySeconds: 15
-            periodSeconds: 20
-          readinessProbe:
-            httpGet:
-              path: /        # ← corrigé
-              port: 80
-            initialDelaySeconds: 5
-            periodSeconds: 10
+  replicas: 2
+  selector:
+    matchLabels:
+      app: weatherapp
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: weatherapp
+    spec:
+      # ✅ Cibler uniquement worker1 et worker2
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - worker1
+                      - worker2
+        # ✅ 1 pod par worker (haute disponibilité)
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app: weatherapp
+                topologyKey: kubernetes.io/hostname
+      containers:
+        - name: weatherapp
+          image: IMAGE_TAG_PLACEHOLDER     # ← remplacé par sed dans Jenkins
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 80
+          env:
+            - name: NODE_ENV
+              value: "production"
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
