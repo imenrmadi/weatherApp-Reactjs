@@ -151,7 +151,7 @@ pipeline {
         stage('Deploy to Kubernetes') {
             steps {
                 withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
-                    sh """
+                    sh '''
                         export KUBECONFIG=\$KUBECONFIG
 
                         sed 's|IMAGE_TAG_PLACEHOLDER|${FULL_IMAGE}|g' \
@@ -164,7 +164,7 @@ pipeline {
                         kubectl get pods -o wide -l app=weatherapp
 
                         rm k8s/deployment.tmp.yaml
-                    """
+                    '''
                 }
             }
         }
