@@ -1,70 +1,191 @@
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: weatherapp
-  namespace: default
-  labels:
-    app: weatherapp
-spec:
-  replicas: 2
-  selector:
-    matchLabels:
-      app: weatherapp
-  strategy:
-    type: RollingUpdate
-    rollingUpdate:
-      maxSurge: 1
-      maxUnavailable: 0
-  template:
-    metadata:
-      labels:
-        app: weatherapp
-    spec:
-      # ✅ Cibler uniquement worker1 et worker2
-      affinity:
-        nodeAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            nodeSelectorTerms:
-              - matchExpressions:
-                  - key: kubernetes.io/hostname
-                    operator: In
-                    values:
-                      - worker1
-                      - worker2
-        # ✅ 1 pod par worker (haute disponibilité)
-        podAntiAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-            - weight: 100
-              podAffinityTerm:
-                labelSelector:
-                  matchLabels:
-                    app: weatherapp
-                topologyKey: kubernetes.io/hostname
-      containers:
-        - name: weatherapp
-          image: "IMAGE_TAG_PLACEHOLDER"     # ← remplacé par sed dans Jenkins
-          imagePullPolicy: Always
-          ports:
-            - containerPort: 80
-          env:
-            - name: NODE_ENV
-              value: "production"
-          resources:
-            requests:
-              memory: "128Mi"
-              cpu: "100m"
-            limits:
-              memory: "256Mi"
-              cpu: "500m"
-          livenessProbe:
-            httpGet:
-              path: /
-              port: 80
-            initialDelaySeconds: 15
-            periodSeconds: 20
-          readinessProbe:
-            httpGet:
-              path: /
-              port: 80
-            initialDelaySeconds: 5
-            periodSeconds: 10
+pipeline {
+    agent any
+
+    environment {
+        SCANNER_HOME = tool 'sonar-scanner'
+        DOCKER_HUB   = 'imen8'
+        IMAGE_NAME   = 'weatherapp'
+        IMAGE_TAG    = "${BUILD_NUMBER}"
+        FULL_IMAGE   = "${DOCKER_HUB}/${IMAGE_NAME}:${IMAGE_TAG}"
+    }
+
+    stages {
+
+        stage('Checkout') {
+            steps {
+                git branch: 'master',
+                    credentialsId: '525997b1-3b76-410c-bf52-e2a09e81aadf',
+                    url: 'https://github.com/imenrmadi/weatherApp-Reactjs.git/'
+            }
+        }
+
+        stage('OWASP Scan') {
+            steps {
+                script {
+                    def currentHash = sh(
+                        script: "md5sum package.json | awk '{print \$1}'",
+                        returnStdout: true
+                    ).trim()
+
+                    def hashFile = '/var/lib/jenkins/dependency-check-cache/pkg-hash.txt'
+
+                    def lastHash = sh(
+                        script: "cat ${hashFile} 2>/dev/null || echo 'none'",
+                        returnStdout: true
+                    ).trim()
+
+                    if (currentHash == lastHash) {
+                        echo "package.json inchangé — rapport OWASP réutilisé"
+                        sh '''
+                            cp /var/lib/jenkins/dependency-check-cache/dependency-check-report.* \
+                                . 2>/dev/null || true
+                        '''
+                    } else {
+                        echo "package.json modifié — scan OWASP lancé"
+                        catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
+                            withCredentials([string(credentialsId: 'nvd-api-key', variable: 'NVD_KEY')]) {
+                                dependencyCheck additionalArguments: """
+                                    --scan ./package.json
+                                    --format HTML --format XML
+                                    --nvdApiKey=${NVD_KEY}
+                                    --data /var/lib/jenkins/dependency-check-data
+                                    --noupdate
+                                """, odcInstallation: 'DP'
+                            }
+                        }
+
+                        sh """
+                            mkdir -p /var/lib/jenkins/dependency-check-cache
+                            cp dependency-check-report.* \
+                                /var/lib/jenkins/dependency-check-cache/ 2>/dev/null || true
+                            echo '${currentHash}' > ${hashFile}
+                        """
+                    }
+
+                    dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+                }
+            }
+        }
+
+        stage('SonarQube') {
+            steps {
+                script {
+                    def currentHash = sh(
+                        script: "find src/ -type f | sort | xargs md5sum | md5sum | awk '{print \$1}'",
+                        returnStdout: true
+                    ).trim()
+
+                    def lastHash = sh(
+                        script: "cat /var/lib/jenkins/sonar-cache/src-hash.txt 2>/dev/null || echo 'none'",
+                        returnStdout: true
+                    ).trim()
+
+                    if (currentHash == lastHash) {
+                        echo "src/ inchangé — scan SonarQube ignoré"
+                        env.SONAR_SKIPPED = 'true'
+                    } else {
+                        echo "src/ modifié — nettoyage ancien rapport + nouveau scan"
+                        env.SONAR_SKIPPED = 'false'
+
+                        sh """
+                            rm -rf /var/lib/jenkins/sonar-cache/scannerwork
+                            mkdir -p /var/lib/jenkins/sonar-cache/scannerwork
+                        """
+
+                        withSonarQubeEnv('sonar-server') {
+                            sh """
+                                ${SCANNER_HOME}/bin/sonar-scanner \
+                                -Dsonar.projectName=weatherapp \
+                                -Dsonar.projectKey=weatherapp \
+                                -Dsonar.sources=src \
+                                -Dsonar.exclusions=node_modules/**,build/**,**/*.test.js,**/*.spec.js \
+                                -Dsonar.working.directory=/var/lib/jenkins/sonar-cache/scannerwork \
+                                -Dsonar.nodejs.executable=/usr/bin/node
+                            """
+                        }
+
+                        sh """
+                            mkdir -p /var/lib/jenkins/sonar-cache
+                            echo '${currentHash}' > /var/lib/jenkins/sonar-cache/src-hash.txt
+                        """
+                    }
+                }
+            }
+        }
+
+        stage('Quality Gate') {
+            when {
+                expression { return env.SONAR_SKIPPED == 'false' }
+            }
+            steps {
+                timeout(time: 5, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                sh '''
+                    docker build -t ${FULL_IMAGE} -f docker/Dockerfile .
+                    docker tag ${FULL_IMAGE} ${DOCKER_HUB}/${IMAGE_NAME}:latest
+                '''
+            }
+        }
+
+        stage('Push Image') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub-cred',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+                    sh '''
+                        echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
+                        docker push ${FULL_IMAGE}
+                        docker tag ${FULL_IMAGE} ${DOCKER_HUB}/${IMAGE_NAME}:latest
+                        docker push ${DOCKER_HUB}/${IMAGE_NAME}:latest
+                    '''
+                }
+            }
+        }
+
+        stage('Deploy to Kubernetes') {
+            steps {
+                withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
+                    sh """
+                        export KUBECONFIG=\$KUBECONFIG
+
+                        echo "🔧 Génération du deployment.tmp.yaml..."
+
+                        sed 's|IMAGE_TAG_PLACEHOLDER|${FULL_IMAGE}|g' \
+                            k8s/deployment.yaml > k8s/deployment.tmp.yaml
+
+                        echo "📄 Vérification du fichier généré"
+                        cat k8s/deployment.tmp.yaml
+
+                        echo "🧪 Validation YAML (dry-run)..."
+                        kubectl apply --dry-run=client -f k8s/deployment.tmp.yaml
+
+                        echo "🚀 Application sur Kubernetes"
+                        kubectl apply --validate=false -f k8s/deployment.tmp.yaml
+                        kubectl apply --validate=false -f k8s/service.yaml
+
+                        echo "📊 Vérification du rollout"
+                        kubectl rollout status deployment/weatherapp
+                        kubectl get pods -o wide -l app=weatherapp
+
+                        echo "🧹 Nettoyage fichier temporaire"
+                        rm -f k8s/deployment.tmp.yaml
+                    """
+                }
+            }
+        }
+    }
+
+    post {
+        success  { echo "Déploiement réussi sur worker1 & worker2 !" }
+        failure  { echo "Echec du pipeline." }
+        unstable { echo "Pipeline instable (OWASP ou Quality Gate)." }
+    }
+}
