@@ -77,49 +77,29 @@ pipeline {
 
         stage('SonarQube') {
             steps {
+                withSonarQubeEnv('sonar-server') {
+                    sh '''
+                    $SCANNER_HOME/bin/sonar-scanner \
+                    -Dsonar.projectName=weatherapp \
+                    -Dsonar.projectKey=weatherapp \
+                    -Dsonar.sources=src \
+                    -Dsonar.exclusions=node_modules/**,build/**
+                    '''
+                }
+            }
+            steps {
                 script {
-
-                    def currentHash = sh(
-                        script: "find src/ -type f | sort | xargs md5sum | md5sum | awk '{print \$1}'",
-                        returnStdout: true
-                    ).trim()
-
-                    def lastHash = sh(
-                        script: "cat /var/lib/jenkins/sonar-cache/src-hash.txt 2>/dev/null || echo 'none'",
-                        returnStdout: true
-                    ).trim()
-
-                    if (currentHash == lastHash) {
-
-                        echo "src/ inchangé — scan SonarQube ignoré"
-                        env.SONAR_SKIPPED = 'true'
-
-                    } else {
-
-                        echo "src/ modifié — nettoyage ancien rapport + nouveau scan"
-                        env.SONAR_SKIPPED = 'false'
-
-                        // Supprimer l'ancien scannerwork avant de relancer
+            // ... hash check ...
+                    withSonarQubeEnv('sonar-server') {
                         sh """
-                            rm -rf /var/lib/jenkins/sonar-cache/scannerwork
-                            mkdir -p /var/lib/jenkins/sonar-cache/scannerwork
-                        """
-
-                        withSonarQubeEnv('sonar-server') {
-                            sh """
-                                ${SCANNER_HOME}/bin/sonar-scanner \
-                                -Dsonar.projectName=weatherapp \
-                                -Dsonar.projectKey=weatherapp \
-                                -Dsonar.sources=src \
-                                -Dsonar.exclusions=node_modules/**,build/**,**/*.test.js,**/*.spec.js \
-                                -Dsonar.working.directory=/var/lib/jenkins/sonar-cache/scannerwork \
-                                -Dsonar.nodejs.executable=/usr/bin/node
-                            """
-                        }
-
-                        sh """
-                            mkdir -p /var/lib/jenkins/sonar-cache
-                            echo '${currentHash}' > /var/lib/jenkins/sonar-cache/src-hash.txt
+                            export PATH=/usr/bin:$PATH
+                            ${SCANNER_HOME}/bin/sonar-scanner \
+                            -Dsonar.projectName=weatherapp \
+                            -Dsonar.projectKey=weatherapp \
+                            -Dsonar.sources=src \
+                            -Dsonar.exclusions=node_modules/**,build/**,**/*.test.js,**/*.spec.js \
+                            -Dsonar.working.directory=/var/lib/jenkins/sonar-cache/scannerwork \
+                            -Dsonar.nodejs.executable=/usr/bin/node
                         """
                     }
                 }
