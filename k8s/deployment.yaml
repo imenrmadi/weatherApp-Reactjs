@@ -1,4 +1,3 @@
-imenrm@machine:/var/lib/jenkins/workspace/weatherappk8s/k8s$ cat deployment.tmp.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
