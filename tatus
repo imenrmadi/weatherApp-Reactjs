@@ -1,0 +1,321 @@
+warning: in the working copy of 'k8s/deployment.yaml', LF will be replaced by CRLF the next time Git touches it
+[1mdiff --cc README.md[m
+[1mindex 06ec855,6d9e498..0000000[m
+[1m--- a/README.md[m
+[1m+++ b/README.md[m
+[36m@@@ -14,4 -14,3 +14,7 @@@[m
+  ```[m
+  npm i && npm start[m
+  ```[m
+[32m++<<<<<<< HEAD[m
+[32m +# test cicd[m
+[32m++=======[m
+[32m++>>>>>>> a7e3046ae85b6b634f4bdc48e8abb93cddaeb248[m
+[1mdiff --cc k8s/deployment.yaml[m
+[1mindex f61d9a5,3c527f4..0000000[m
+[1m--- a/k8s/deployment.yaml[m
+[1m+++ b/k8s/deployment.yaml[m
+[36m@@@ -1,80 -1,80 +1,163 @@@[m
+[31m -apiVersion: apps/v1[m
+[31m -kind: Deployment[m
+[31m -metadata:[m
+[31m -  name: weatherapp[m
+[31m -  namespace: default[m
+[31m -  labels:[m
+[31m -    app: weatherapp[m
+[31m -[m
+[31m -spec:[m
+[31m -  replicas: 2[m
+[31m -[m
+[31m -  selector:[m
+[31m -    matchLabels:[m
+[31m -      app: weatherapp[m
+[31m -[m
+[31m -  strategy:[m
+[31m -    type: RollingUpdate[m
+[31m -    rollingUpdate:[m
+[31m -      maxSurge: 1[m
+[31m -      maxUnavailable: 0[m
+[31m -[m
+[31m -  template:[m
+[31m -    metadata:[m
+[31m -      labels:[m
+[31m -        app: weatherapp[m
+[31m -[m
+[31m -    spec:[m
+[31m -      affinity:[m
+[31m -        nodeAffinity:[m
+[31m -          requiredDuringSchedulingIgnoredDuringExecution:[m
+[31m -            nodeSelectorTerms:[m
+[31m -              - matchExpressions:[m
+[31m -                  - key: kubernetes.io/hostname[m
+[31m -                    operator: In[m
+[31m -                    values:[m
+[31m -                      - worker1[m
+[31m -                      - worker2[m
+[31m -[m
+[31m -        podAntiAffinity:[m
+[31m -          preferredDuringSchedulingIgnoredDuringExecution:[m
+[31m -            - weight: 100[m
+[31m -              podAffinityTerm:[m
+[31m -                labelSelector:[m
+[31m -                  matchLabels:[m
+[31m -                    app: weatherapp[m
+[31m -                topologyKey: kubernetes.io/hostname[m
+[31m -[m
+[31m -      containers:[m
+[31m -        - name: weatherapp[m
+[31m -          image: "IMAGE_TAG_PLACEHOLDER"[m
+[31m -          imagePullPolicy: Always[m
+[31m -[m
+[31m -          ports:[m
+[31m -            - containerPort: 80[m
+[31m -[m
+[31m -          env:[m
+[31m -            - name: NODE_ENV[m
+[31m -              value: "production"[m
+[31m -[m
+[31m -          resources:[m
+[31m -            requests:[m
+[31m -              memory: "128Mi"[m
+[31m -              cpu: "100m"[m
+[31m -            limits:[m
+[31m -              memory: "256Mi"[m
+[31m -              cpu: "500m"[m
+[31m -[m
+[31m -          livenessProbe:[m
+[31m -            httpGet:[m
+[31m -              path: /[m
+[31m -              port: 80[m
+[31m -            initialDelaySeconds: 15[m
+[31m -            periodSeconds: 20[m
+[31m -[m
+[31m -          readinessProbe:[m
+[31m -            httpGet:[m
+[31m -              path: /[m
+[31m -              port: 80[m
+[31m -            initialDelaySeconds: 5[m
+[31m -            periodSeconds: 10[m
+[32m++<<<<<<< HEAD[m
+[32m +apiVersion: apps/v1[m
+[32m +kind: Deployment[m
+[32m +metadata:[m
+[32m +  name: weatherapp[m
+[32m +  namespace: default[m
+[32m +  labels:[m
+[32m +    app: weatherapp[m
+[32m +[m
+[32m +spec:[m
+[32m +  replicas: 2[m
+[32m +[m
+[32m +  selector:[m
+[32m +    matchLabels:[m
+[32m +      app: weatherapp[m
+[32m +[m
+[32m +  strategy:[m
+[32m +    type: RollingUpdate[m
+[32m +    rollingUpdate:[m
+[32m +      maxSurge: 1[m
+[32m +      maxUnavailable: 0[m
+[32m +[m
+[32m +  template:[m
+[32m +    metadata:[m
+[32m +      labels:[m
+[32m +        app: weatherapp[m
+[32m +[m
+[32m +    spec:[m
+[32m +      affinity:[m
+[32m +        nodeAffinity:[m
+[32m +          requiredDuringSchedulingIgnoredDuringExecution:[m
+[32m +            nodeSelectorTerms:[m
+[32m +              - matchExpressions:[m
+[32m +                  - key: kubernetes.io/hostname[m
+[32m +                    operator: In[m
+[32m +                    values:[m
+[32m +                      - worker1[m
+[32m +                      - worker2[m
+[32m +[m
+[32m +        podAntiAffinity:[m
+[32m +          preferredDuringSchedulingIgnoredDuringExecution:[m
+[32m +            - weight: 100[m
+[32m +              podAffinityTerm:[m
+[32m +                labelSelector:[m
+[32m +                  matchLabels:[m
+[32m +                    app: weatherapp[m
+[32m +                topologyKey: kubernetes.io/hostname[m
+[32m +[m
+[32m +      containers:[m
+[32m +        - name: weatherapp[m
+[32m +          image: "IMAGE_TAG_PLACEHOLDER"[m
+[32m +          imagePullPolicy: Always[m
+[32m +[m
+[32m +          ports:[m
+[32m +            - containerPort: 80[m
+[32m +[m
+[32m +          env:[m
+[32m +            - name: NODE_ENV[m
+[32m +              value: "production"[m
+[32m +[m
+[32m +          resources:[m
+[32m +            requests:[m
+[32m +              memory: "128Mi"[m
+[32m +              cpu: "100m"[m
+[32m +            limits:[m
+[32m +              memory: "256Mi"[m
+[32m +              cpu: "500m"[m
+[32m +[m
+[32m +          livenessProbe:[m
+[32m +            httpGet:[m
+[32m +              path: /[m
+[32m +              port: 80[m
+[32m +            initialDelaySeconds: 15[m
+[32m +            periodSeconds: 20[m
+[32m +[m
+[32m +          readinessProbe:[m
+[32m +            httpGet:[m
+[32m +              path: /[m
+[32m +              port: 80[m
+[32m +            initialDelaySeconds: 5[m
+[32m +            periodSeconds: 10[m
+[32m++=======[m
+[32m++apiVersion: apps/v1[m
+[32m++kind: Deployment[m
+[32m++metadata:[m
+[32m++  name: weatherapp[m
+[32m++  namespace: default[m
+[32m++  labels:[m
+[32m++    app: weatherapp[m
+[32m++[m
+[32m++spec:[m
+[32m++  replicas: 2[m
+[32m++[m
+[32m++  selector:[m
+[32m++    matchLabels:[m
+[32m++      app: weatherapp[m
+[32m++[m
+[32m++  strategy:[m
+[32m++    type: RollingUpdate[m
+[32m++    rollingUpdate:[m
+[32m++      maxSurge: 1[m
+[32m++      maxUnavailable: 0[m
+[32m++[m
+[32m++  template:[m
+[32m++    metadata:[m
+[32m++      labels:[m
+[32m++        app: weatherapp[m
+[32m++[m
+[32m++    spec:[m
+[32m++      affinity:[m
+[32m++        nodeAffinity:[m
+[32m++          requiredDuringSchedulingIgnoredDuringExecution:[m
+[32m++            nodeSelectorTerms:[m
+[32m++              - matchExpressions:[m
+[32m++                  - key: kubernetes.io/hostname[m
+[32m++                    operator: In[m
+[32m++                    values:[m
+[32m++                      - worker1[m
+[32m++                      - worker2[m
+[32m++[m
+[32m++        podAntiAffinity:[m
+[32m++          preferredDuringSchedulingIgnoredDuringExecution:[m
+[32m++            - weight: 100[m
+[32m++              podAffinityTerm:[m
+[32m++                labelSelector:[m
+[32m++                  matchLabels:[m
+[32m++                    app: weatherapp[m
+[32m++                topologyKey: kubernetes.io/hostname[m
+[32m++[m
+[32m++      containers:[m
+[32m++        - name: weatherapp[m
+[32m++          image: "IMAGE_TAG_PLACEHOLDER"[m
+[32m++          imagePullPolicy: Always[m
+[32m++[m
+[32m++          ports:[m
+[32m++            - containerPort: 80[m
+[32m++[m
+[32m++          env:[m
+[32m++            - name: NODE_ENV[m
+[32m++              value: "production"[m
+[32m++[m
+[32m++          resources:[m
+[32m++            requests:[m
+[32m++              memory: "128Mi"[m
+[32m++              cpu: "100m"[m
+[32m++            limits:[m
+[32m++              memory: "256Mi"[m
+[32m++              cpu: "500m"[m
+[32m++[m
+[32m++          livenessProbe:[m
+[32m++            httpGet:[m
+[32m++              path: /[m
+[32m++              port: 80[m
+[32m++            initialDelaySeconds: 15[m
+[32m++            periodSeconds: 20[m
+[32m++[m
+[32m++          readinessProbe:[m
+[32m++            httpGet:[m
+[32m++              path: /[m
+[32m++              port: 80[m
+[32m++            initialDelaySeconds: 5[m
+[32m++            periodSeconwarning: in the working copy of 'k8s/service.yaml', LF will be replaced by CRLF the next time Git touches it
+ds: 10[m
+[32m++>>>>>>> a7e3046ae85b6b634f4bdc48e8abb93cddaeb248[m
+[1mdiff --cc k8s/service.yaml[m
+[1mindex 75181e9,56a79ac..0000000[m
+[1m--- a/k8s/service.yaml[m
+[1m+++ b/k8s/service.yaml[m
+[36m@@@ -1,17 -1,17 +1,37 @@@[m
+[31m -apiVersion: v1[m
+[31m -kind: Service[m
+[31m -metadata:[m
+[31m -  name: weatherapp[m
+[31m -  namespace: default[m
+[31m -  labels:[m
+[31m -    app: weatherapp[m
+[31m -spec:[m
+[31m -  selector:[m
+[31m -    app: weatherapp[m
+[31m -  type: NodePort[m
+[31m -  ports:[m
+[31m -    - name: http[m
+[31m -      protocol: TCP[m
+[31m -      port: 80[m
+[31m -      targetPort: 80[m
+[31m -      nodePort: 30080[m
+[32m++<<<<<<< HEAD[m
+[32m +apiVersion: v1[m
+[32m +kind: Service[m
+[32m +metadata:[m
+[32m +  name: weatherapp[m
+[32m +  namespace: default[m
+[32m +  labels:[m
+[32m +    app: weatherapp[m
+[32m +spec:[m
+[32m +  selector:[m
+[32m +    app: weatherapp[m
+[32m +  type: NodePort[m
+[32m +  ports:[m
+[32m +    - name: http[m
+[32m +      protocol: TCP[m
+[32m +      port: 80[m
+[32m +      targetPort: 80[m
+[32m +      nodePort: 30080[m
+[32m++=======[m
+[32m++apiVersion: v1[m
+[32m++kind: Service[m
+[32m++metadata:[m
+[32m++  name: weatherapp[m
+[32m++  namespace: default[m
+[32m++  labels:[m
+[32m++    app: weatherapp[m
+[32m++spec:[m
+[32m++  selector:[m
+[32m++    app: weatherapp[m
+[32m++  type: NodePort[m
+[32m++  ports:[m
+[32m++    - name: http[m
+[32m++      protocol: TCP[m
+[32m++      port: 80[m
+[32m++      targetPort: 80[m
+[32m++      nodePort: 30080[m
+[32m++>>>>>>> a7e3046ae85b6b634f4bdc48e8abb93cddaeb248[m

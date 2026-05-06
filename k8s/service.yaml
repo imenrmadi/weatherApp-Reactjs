@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 apiVersion: v1
 kind: Service
 metadata:
@@ -15,3 +16,22 @@ spec:
       port: 80
       targetPort: 80
       nodePort: 30080
+=======
+apiVersion: v1
+kind: Service
+metadata:
+  name: weatherapp
+  namespace: default
+  labels:
+    app: weatherapp
+spec:
+  selector:
+    app: weatherapp
+  type: NodePort
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 80
+      nodePort: 30080
+>>>>>>> a7e3046ae85b6b634f4bdc48e8abb93cddaeb248

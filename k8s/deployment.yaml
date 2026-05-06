@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -78,3 +79,85 @@ spec:
               port: 80
             initialDelaySeconds: 5
             periodSeconds: 10
+=======
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: weatherapp
+  namespace: default
+  labels:
+    app: weatherapp
+
+spec:
+  replicas: 2
+
+  selector:
+    matchLabels:
+      app: weatherapp
+
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+
+  template:
+    metadata:
+      labels:
+        app: weatherapp
+
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - worker1
+                      - worker2
+
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app: weatherapp
+                topologyKey: kubernetes.io/hostname
+
+      containers:
+        - name: weatherapp
+          image: "IMAGE_TAG_PLACEHOLDER"
+          imagePullPolicy: Always
+
+          ports:
+            - containerPort: 80
+
+          env:
+            - name: NODE_ENV
+              value: "production"
+
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 15
+            periodSeconds: 20
+
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
+>>>>>>> a7e3046ae85b6b634f4bdc48e8abb93cddaeb248
