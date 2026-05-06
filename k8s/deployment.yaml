@@ -42,7 +42,7 @@ spec:
                 topologyKey: kubernetes.io/hostname
       containers:
         - name: weatherapp
-          image: IMAGE_TAG_PLACEHOLDER     # ← remplacé par sed dans Jenkins
+          image: "IMAGE_TAG_PLACEHOLDER"     # ← remplacé par sed dans Jenkins
           imagePullPolicy: Always
           ports:
             - containerPort: 80
