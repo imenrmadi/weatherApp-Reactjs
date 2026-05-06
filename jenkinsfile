@@ -42,7 +42,7 @@ pipeline {
 
                         sh '''
                             cp /var/lib/jenkins/dependency-check-cache/dependency-check-report.* \
-                            . 2>/dev/null || true
+                                . 2>/dev/null || true
                         '''
 
                     } else {
@@ -65,7 +65,7 @@ pipeline {
                         sh """
                             mkdir -p /var/lib/jenkins/dependency-check-cache
                             cp dependency-check-report.* \
-                            /var/lib/jenkins/dependency-check-cache/ 2>/dev/null || true
+                                /var/lib/jenkins/dependency-check-cache/ 2>/dev/null || true
                             echo '${currentHash}' > ${hashFile}
                         """
                     }
@@ -79,27 +79,28 @@ pipeline {
             steps {
                 withSonarQubeEnv('sonar-server') {
                     sh '''
-                    $SCANNER_HOME/bin/sonar-scanner \
-                    -Dsonar.projectName=weatherapp \
-                    -Dsonar.projectKey=weatherapp \
-                    -Dsonar.sources=src \
-                    -Dsonar.exclusions=node_modules/**,build/**
+                        $SCANNER_HOME/bin/sonar-scanner \
+                        -Dsonar.projectName=weatherapp \
+                        -Dsonar.projectKey=weatherapp \
+                        -Dsonar.sources=src \
+                        -Dsonar.exclusions=node_modules/**,build/**
                     '''
                 }
             }
+
             steps {
                 script {
-            // ... hash check ...
+                    // ... hash check ...
                     withSonarQubeEnv('sonar-server') {
                         sh """
                             export PATH=/usr/bin:$PATH
                             ${SCANNER_HOME}/bin/sonar-scanner \
-                            -Dsonar.projectName=weatherapp \
-                            -Dsonar.projectKey=weatherapp \
-                            -Dsonar.sources=src \
-                            -Dsonar.exclusions=node_modules/**,build/**,**/*.test.js,**/*.spec.js \
-                            -Dsonar.working.directory=/var/lib/jenkins/sonar-cache/scannerwork \
-                            -Dsonar.nodejs.executable=/usr/bin/node
+                                -Dsonar.projectName=weatherapp \
+                                -Dsonar.projectKey=weatherapp \
+                                -Dsonar.sources=src \
+                                -Dsonar.exclusions=node_modules/**,build/**,**/*.test.js,**/*.spec.js \
+                                -Dsonar.working.directory=/var/lib/jenkins/sonar-cache/scannerwork \
+                                -Dsonar.nodejs.executable=/usr/bin/node
                         """
                     }
                 }
@@ -147,7 +148,7 @@ pipeline {
                         export KUBECONFIG=\$KUBECONFIG
 
                         sed 's|IMAGE_TAG_PLACEHOLDER|${FULL_IMAGE}|g' \
-                        k8s/deployment.yaml > k8s/deployment.tmp.yaml
+                            k8s/deployment.yaml > k8s/deployment.tmp.yaml
 
                         kubectl apply --validate=false -f k8s/deployment.tmp.yaml
                         kubectl apply --validate=false -f k8s/service.yaml
