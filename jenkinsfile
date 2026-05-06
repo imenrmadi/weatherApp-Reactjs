@@ -22,8 +22,6 @@ pipeline {
         stage('OWASP Scan') {
             steps {
                 script {
-
-                    // Comparer le hash de package.json avec le dernier build
                     def currentHash = sh(
                         script: "md5sum package.json | awk '{print \$1}'",
                         returnStdout: true
@@ -37,18 +35,13 @@ pipeline {
                     ).trim()
 
                     if (currentHash == lastHash) {
-
-                        echo "✅ package.json inchangé — réutilisation du dernier rapport OWASP"
-
+                        echo "package.json inchangé — rapport OWASP réutilisé"
                         sh '''
                             cp /var/lib/jenkins/dependency-check-cache/dependency-check-report.* \
                                 . 2>/dev/null || true
                         '''
-
                     } else {
-
-                        echo "🔍 package.json modifié — lancement du scan OWASP"
-
+                        echo "package.json modifié — scan OWASP lancé"
                         catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
                             withCredentials([string(credentialsId: 'nvd-api-key', variable: 'NVD_KEY')]) {
                                 dependencyCheck additionalArguments: """
@@ -60,8 +53,6 @@ pipeline {
                                 """, odcInstallation: 'DP'
                             }
                         }
-
-                        // Sauvegarder le rapport et le hash pour le prochain build
                         sh """
                             mkdir -p /var/lib/jenkins/dependency-check-cache
                             cp dependency-check-report.* \
@@ -69,7 +60,6 @@ pipeline {
                             echo '${currentHash}' > ${hashFile}
                         """
                     }
-
                     dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
                 }
             }
@@ -77,30 +67,44 @@ pipeline {
 
         stage('SonarQube') {
             steps {
-                withSonarQubeEnv('sonar-server') {
-                    sh '''
-                        $SCANNER_HOME/bin/sonar-scanner \
-                        -Dsonar.projectName=weatherapp \
-                        -Dsonar.projectKey=weatherapp \
-                        -Dsonar.sources=src \
-                        -Dsonar.exclusions=node_modules/**,build/**
-                    '''
-                }
-            }
-
-            steps {
                 script {
-                    // ... hash check ...
-                    withSonarQubeEnv('sonar-server') {
+                    def currentHash = sh(
+                        script: "find src/ -type f | sort | xargs md5sum | md5sum | awk '{print \$1}'",
+                        returnStdout: true
+                    ).trim()
+
+                    def lastHash = sh(
+                        script: "cat /var/lib/jenkins/sonar-cache/src-hash.txt 2>/dev/null || echo 'none'",
+                        returnStdout: true
+                    ).trim()
+
+                    if (currentHash == lastHash) {
+                        echo "src/ inchangé — scan SonarQube ignoré"
+                        env.SONAR_SKIPPED = 'true'
+                    } else {
+                        echo "src/ modifié — nettoyage ancien rapport + nouveau scan"
+                        env.SONAR_SKIPPED = 'false'
+
                         sh """
-                            export PATH=/usr/bin:$PATH
-                            ${SCANNER_HOME}/bin/sonar-scanner \
+                            rm -rf /var/lib/jenkins/sonar-cache/scannerwork
+                            mkdir -p /var/lib/jenkins/sonar-cache/scannerwork
+                        """
+
+                        withSonarQubeEnv('sonar-server') {
+                            sh """
+                                ${SCANNER_HOME}/bin/sonar-scanner \
                                 -Dsonar.projectName=weatherapp \
                                 -Dsonar.projectKey=weatherapp \
                                 -Dsonar.sources=src \
                                 -Dsonar.exclusions=node_modules/**,build/**,**/*.test.js,**/*.spec.js \
                                 -Dsonar.working.directory=/var/lib/jenkins/sonar-cache/scannerwork \
                                 -Dsonar.nodejs.executable=/usr/bin/node
+                            """
+                        }
+
+                        sh """
+                            mkdir -p /var/lib/jenkins/sonar-cache
+                            echo '${currentHash}' > /var/lib/jenkins/sonar-cache/src-hash.txt
                         """
                     }
                 }
@@ -108,8 +112,11 @@ pipeline {
         }
 
         stage('Quality Gate') {
+            when {
+                expression { return env.SONAR_SKIPPED == 'false' }
+            }
             steps {
-                timeout(time: 15, unit: 'MINUTES') {
+                timeout(time: 5, unit: 'MINUTES') {
                     waitForQualityGate abortPipeline: true
                 }
             }
@@ -164,14 +171,8 @@ pipeline {
     }
 
     post {
-        success {
-            echo "✅ Déploiement réussi sur worker1 & worker2 !"
-        }
-        failure {
-            echo "❌ Échec du pipeline."
-        }
-        unstable {
-            echo "⚠️ Pipeline instable (OWASP ou Quality Gate)."
-        }
+        success  { echo "Déploiement réussi sur worker1 & worker2 !" }
+        failure  { echo "Echec du pipeline." }
+        unstable { echo "Pipeline instable (OWASP ou Quality Gate)." }
     }
 }
